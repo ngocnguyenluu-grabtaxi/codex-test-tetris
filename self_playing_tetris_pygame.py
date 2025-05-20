@@ -5,7 +5,8 @@ import sys
 BOARD_WIDTH = 10
 BOARD_HEIGHT = 20
 CELL_SIZE = 30
-FPS = 60
+# Delay between pieces in milliseconds so the AI's moves are visible
+MOVE_DELAY = 500
 
 # Tetromino definitions with their rotation states
 TETROMINOES = {
@@ -166,7 +167,6 @@ def main():
     screen = pygame.display.set_mode((width, height))
     pygame.display.set_caption("Self-Playing Tetris")
     font = pygame.font.SysFont(None, 24)
-    clock = pygame.time.Clock()
 
     board = empty_board()
     score = 0
@@ -189,7 +189,7 @@ def main():
         score += lines
         draw_board(screen, board, font, score)
         pygame.display.flip()
-        clock.tick(10)
+        pygame.time.wait(MOVE_DELAY)
 
     draw_board(screen, board, font, score)
     pygame.display.flip()
