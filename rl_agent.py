@@ -5,20 +5,36 @@ import torch.nn as nn
 import torch.optim as optim
 
 from rl_env import ACTIONS
+from board import BOARD_WIDTH, BOARD_HEIGHT
 
 class DQN(nn.Module):
-    def __init__(self, input_dim, n_actions=len(ACTIONS)):
+    def __init__(self, input_dim, board_h=20, board_w=10, n_actions=len(ACTIONS)):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(input_dim, 128),
+        board_dim = board_h * board_w
+        self.board_h = board_h
+        self.board_w = board_w
+        self.extras_dim = input_dim - board_dim
+
+        self.conv = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Linear(128, 64),
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),
             nn.ReLU(),
-            nn.Linear(64, n_actions)
+        )
+        dummy = torch.zeros(1, 1, board_h, board_w)
+        conv_out = self.conv(dummy).view(1, -1).size(1)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out + self.extras_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, n_actions)
         )
 
     def forward(self, x):
-        return self.net(x)
+        board = x[:, : self.board_h * self.board_w]
+        board = board.view(-1, 1, self.board_h, self.board_w)
+        extras = x[:, self.board_h * self.board_w :]
+        feat = self.conv(board).view(board.size(0), -1)
+        return self.fc(torch.cat([feat, extras], dim=1))
 
 class ReplayBuffer:
     def __init__(self, capacity=50000):
@@ -41,11 +57,11 @@ class ReplayBuffer:
         return len(self.buffer)
 
 class Agent:
-    def __init__(self, state_dim, device='cpu', lr=1e-3, gamma=0.99):
+    def __init__(self, state_dim, device='cpu', lr=5e-4, gamma=0.99):
         self.device = device
         self.gamma = gamma
-        self.policy_net = DQN(state_dim).to(device)
-        self.target_net = DQN(state_dim).to(device)
+        self.policy_net = DQN(state_dim, board_h=BOARD_HEIGHT, board_w=BOARD_WIDTH).to(device)
+        self.target_net = DQN(state_dim, board_h=BOARD_HEIGHT, board_w=BOARD_WIDTH).to(device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=lr)
         self.buffer = ReplayBuffer()
@@ -55,7 +71,7 @@ class Agent:
         if random.random() < epsilon:
             return random.choice(ACTIONS)
         with torch.no_grad():
-            state_v = torch.tensor(state, dtype=torch.float32, device=self.device)
+            state_v = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
             qvals = self.policy_net(state_v)
             return int(torch.argmax(qvals).item())
 
