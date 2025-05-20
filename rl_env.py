@@ -1,8 +1,8 @@
 import random
 import pygame
 from board import (
-    BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, TETROMINOES,
-    COLORS, BACKGROUND_COLOR, GRID_COLOR,
+    BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, SIDE_PANEL_WIDTH,
+    TETROMINOES, COLORS, BACKGROUND_COLOR, GRID_COLOR,
     empty_board, check_collision, drop_y, place_piece, clear_lines
 )
 
@@ -116,20 +116,50 @@ class TetrisEnv:
         return obs, reward, done, {}
 
     def render(self, surface, offset_x=0, offset_y=0):
-        # draw board
+        """Render the environment to the given surface."""
+        # draw board background
+        board_width_px = BOARD_WIDTH * CELL_SIZE
+        board_height_px = BOARD_HEIGHT * CELL_SIZE
+        pygame.draw.rect(surface, BACKGROUND_COLOR,
+                         pygame.Rect(offset_x, offset_y,
+                                    board_width_px + SIDE_PANEL_WIDTH,
+                                    board_height_px))
+
+        # draw board cells
         for y, row in enumerate(self.board):
             for x, cell in enumerate(row):
-                rect = pygame.Rect(offset_x + x*CELL_SIZE, offset_y + y*CELL_SIZE, CELL_SIZE, CELL_SIZE)
+                rect = pygame.Rect(offset_x + x*CELL_SIZE,
+                                   offset_y + y*CELL_SIZE,
+                                   CELL_SIZE, CELL_SIZE)
                 pygame.draw.rect(surface, GRID_COLOR, rect, 1)
                 if cell is not None:
                     pygame.draw.rect(surface, COLORS[cell], rect)
-        # draw current piece
+
+        # draw current falling piece
         shape = TETROMINOES[self.current_piece][self.rotation]
         for px, py in shape:
             py = self.piece_y + py
             px = self.piece_x + px
-            if py >=0:
-                rect = pygame.Rect(offset_x + px*CELL_SIZE, offset_y + py*CELL_SIZE, CELL_SIZE, CELL_SIZE)
+            if py >= 0:
+                rect = pygame.Rect(offset_x + px*CELL_SIZE,
+                                   offset_y + py*CELL_SIZE,
+                                   CELL_SIZE, CELL_SIZE)
                 pygame.draw.rect(surface, COLORS[self.current_piece], rect)
+
+        panel_x = offset_x + board_width_px + 10
+        # next piece
+        for px, py in TETROMINOES[self.next_piece][0]:
+            rect = pygame.Rect(panel_x + px*CELL_SIZE,
+                               offset_y + 20 + py*CELL_SIZE,
+                               CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(surface, COLORS[self.next_piece], rect)
+
+        # hold piece
+        if self.hold_piece is not None:
+            for px, py in TETROMINOES[self.hold_piece][0]:
+                rect = pygame.Rect(panel_x + px*CELL_SIZE,
+                                   offset_y + 90 + py*CELL_SIZE,
+                                   CELL_SIZE, CELL_SIZE)
+                pygame.draw.rect(surface, COLORS[self.hold_piece], rect)
 
 

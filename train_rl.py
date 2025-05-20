@@ -3,15 +3,25 @@ import argparse
 import pygame
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from board import BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE
+from board import BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, SIDE_PANEL_WIDTH
 from rl_env import TetrisEnv
 from rl_agent import Agent
 
 
-def draw_envs(screen, envs):
-    screen.fill((30,30,30))
+def draw_envs(screen, envs, cols=4):
+    """Render multiple environments in a grid layout."""
+    screen.fill((30, 30, 30))
+    rows = (len(envs) + cols - 1) // cols
     for idx, env in enumerate(envs):
-        env.render(screen, offset_x=idx*env_width)
+        col = idx % cols
+        row = idx // cols
+        offset_x = col * env_width
+        offset_y = row * env_height
+        env.render(screen, offset_x=offset_x, offset_y=offset_y)
+        # separator
+        pygame.draw.rect(screen, (80, 80, 80),
+                         pygame.Rect(offset_x, offset_y, env_width, env_height),
+                         1)
     pygame.display.flip()
 
 
@@ -33,9 +43,12 @@ def main():
         agent.load(args.resume)
 
     pygame.init()
-    global env_width
-    env_width = BOARD_WIDTH * CELL_SIZE
-    screen = pygame.display.set_mode((env_width*args.num_envs, BOARD_HEIGHT * CELL_SIZE))
+    global env_width, env_height
+    env_width = BOARD_WIDTH * CELL_SIZE + SIDE_PANEL_WIDTH
+    env_height = BOARD_HEIGHT * CELL_SIZE
+    cols = 4
+    rows = (args.num_envs + cols - 1) // cols
+    screen = pygame.display.set_mode((env_width * cols, env_height * rows))
     clock = pygame.time.Clock()
 
     writer = SummaryWriter()
@@ -58,10 +71,18 @@ def main():
                 env.reset()
             if loss is not None:
                 writer.add_scalar('loss', loss, agent.steps_done)
-        draw_envs(screen, envs)
-        if episode % 100 == 0 and episode>0:
+        draw_envs(screen, envs, cols=cols)
+        if episode % 100 == 0 and episode > 0:
             ckpt_path = os.path.join(args.checkpoint_dir, f'ckpt_{episode}.pt')
             agent.save(ckpt_path)
+            # keep only the 5 most recent checkpoints
+            ckpts = sorted([
+                f for f in os.listdir(args.checkpoint_dir)
+                if f.startswith('ckpt_') and f.endswith('.pt')
+            ])
+            while len(ckpts) > 5:
+                oldest = ckpts.pop(0)
+                os.remove(os.path.join(args.checkpoint_dir, oldest))
         clock.tick(60)
 
     agent.save(os.path.join(args.checkpoint_dir, 'final.pt'))

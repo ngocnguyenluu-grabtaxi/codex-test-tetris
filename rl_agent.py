@@ -76,9 +76,10 @@ class Agent:
         with torch.no_grad():
             next_q = self.target_net(next_states).max(1)[0]
             target = rewards + self.gamma * next_q * (1 - dones)
-        loss = nn.functional.mse_loss(q_values, target)
+        loss = nn.functional.smooth_l1_loss(q_values, target)
         self.optimizer.zero_grad()
         loss.backward()
+        nn.utils.clip_grad_norm_(self.policy_net.parameters(), 1.0)
         self.optimizer.step()
         if self.steps_done % 100 == 0:
             self.target_net.load_state_dict(self.policy_net.state_dict())
