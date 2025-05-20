@@ -1,15 +1,15 @@
 # Self-Playing Tetris
 
-This repository contains a simple Tetris AI implemented with `pygame`.
+This repository contains a simple Tetris game implemented with `pygame`.
+The game can either be played manually or it can play itself using a
+basic AI.
 
 Run the game with:
 
 ```
-python3 self_playing_tetris_pygame.py
+python3 tetris_game.py [--manual]
 ```
 
-The AI automatically chooses moves and displays them in a window. Each
-tetromino rotates to the selected orientation one step at a time and then
-falls row by row with a short pause after it lands so you can watch the
-strategy unfold. The UI now shows the next tetromino, a held piece and
-the current score on a side panel.
+Pass the `--manual` flag if you want to control the pieces yourself. If
+the flag is omitted, the AI will play automatically. When playing
+manually the side panel will display the keyboard controls.
