@@ -1,5 +1,6 @@
 import random
 import pygame
+from ai import column_heights, count_holes
 from board import (
     BOARD_WIDTH, BOARD_HEIGHT, CELL_SIZE, SIDE_PANEL_WIDTH,
     TETROMINOES, COLORS, BACKGROUND_COLOR, GRID_COLOR,
@@ -99,7 +100,15 @@ class TetrisEnv:
                 # place piece
                 place_piece(self.board, shape, self.piece_x, self.piece_y, self.current_piece)
                 lines = clear_lines(self.board)
-                reward += lines
+                self.score += lines
+                # larger reward for clearing lines
+                reward += lines * 20
+                # small step penalty to encourage faster play
+                reward -= 0.01
+                # penalize tall stacks and holes to shape behaviour
+                heights = column_heights(self.board)
+                reward -= 0.001 * sum(heights)
+                reward -= 0.05 * count_holes(self.board)
                 self.current_piece = self.next_piece
                 self.next_piece = random.choice(list(TETROMINOES.keys()))
                 self.piece_x = BOARD_WIDTH // 2 - 2
@@ -112,7 +121,7 @@ class TetrisEnv:
 
         obs = self._get_obs()
         if done:
-            reward -= 1
+            reward -= 5
         return obs, reward, done, {}
 
     def render(self, surface, offset_x=0, offset_y=0):
