@@ -5,6 +5,8 @@ import sys
 BOARD_WIDTH = 10
 BOARD_HEIGHT = 20
 CELL_SIZE = 30
+# extra space on the right for showing next/held pieces
+SIDE_PANEL_WIDTH = 6 * CELL_SIZE
 # Delay after a piece settles (milliseconds)
 MOVE_DELAY = 200
 # Delay between each row of the falling piece (milliseconds)
@@ -147,10 +149,10 @@ def choose_move(board, piece):
             if score > best_score:
                 best_score = score
                 best_move = (shape, x)
-    return best_move
+    return best_move[0], best_move[1], best_score
 
 
-def draw_board(screen, board, font, score):
+def draw_board(screen, board, font, score, next_piece, hold_piece):
     screen.fill(BACKGROUND_COLOR)
     for y, row in enumerate(board):
         for x, cell in enumerate(row):
@@ -158,20 +160,42 @@ def draw_board(screen, board, font, score):
             pygame.draw.rect(screen, GRID_COLOR, rect, 1)
             if cell is not None:
                 pygame.draw.rect(screen, COLORS[cell], rect)
+    panel_x = BOARD_WIDTH * CELL_SIZE + 10
     score_surf = font.render(f"Score: {score}", True, (255, 255, 255))
-    screen.blit(score_surf, (5, BOARD_HEIGHT * CELL_SIZE + 5))
+    screen.blit(score_surf, (panel_x, 5))
+
+    next_surf = font.render("Next:", True, (255, 255, 255))
+    screen.blit(next_surf, (panel_x, 30))
+    if next_piece is not None:
+        for x, y in TETROMINOES[next_piece][0]:
+            rect = pygame.Rect(panel_x + x * CELL_SIZE,
+                               50 + y * CELL_SIZE,
+                               CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(screen, COLORS[next_piece], rect)
+
+    hold_surf = font.render("Hold:", True, (255, 255, 255))
+    screen.blit(hold_surf, (panel_x, 120))
+    if hold_piece is not None:
+        for x, y in TETROMINOES[hold_piece][0]:
+            rect = pygame.Rect(panel_x + x * CELL_SIZE,
+                               140 + y * CELL_SIZE,
+                               CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(screen, COLORS[hold_piece], rect)
 
 
 def main():
     pygame.init()
-    width = BOARD_WIDTH * CELL_SIZE
-    height = BOARD_HEIGHT * CELL_SIZE + 30
+    width = BOARD_WIDTH * CELL_SIZE + SIDE_PANEL_WIDTH
+    height = BOARD_HEIGHT * CELL_SIZE
     screen = pygame.display.set_mode((width, height))
     pygame.display.set_caption("Self-Playing Tetris")
     font = pygame.font.SysFont(None, 24)
 
     board = empty_board()
     score = 0
+    current_piece = random.choice(list(TETROMINOES.keys()))
+    next_piece = random.choice(list(TETROMINOES.keys()))
+    hold_piece = None
 
     running = True
     while running:
@@ -179,10 +203,34 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-        piece = random.choice(list(TETROMINOES.keys()))
-        shape, x = choose_move(board, piece)
-        if shape is None:
-            break
+        # determine whether to use hold piece
+        if hold_piece is None:
+            shape_cur, x_cur, score_cur = choose_move(board, current_piece)
+            shape_next, x_next, score_next = choose_move(board, next_piece)
+            if shape_cur is None and shape_next is None:
+                break
+            if score_next > score_cur:
+                action = 'hold_current'
+                shape, x = shape_next, x_next
+                piece = next_piece
+            else:
+                action = 'use_current'
+                shape, x = shape_cur, x_cur
+                piece = current_piece
+        else:
+            shape_cur, x_cur, score_cur = choose_move(board, current_piece)
+            shape_hold, x_hold, score_hold = choose_move(board, hold_piece)
+            if shape_cur is None and shape_hold is None:
+                break
+            if score_hold > score_cur:
+                action = 'use_hold'
+                shape, x = shape_hold, x_hold
+                piece = hold_piece
+            else:
+                action = 'use_current'
+                shape, x = shape_cur, x_cur
+                piece = current_piece
+
         y = drop_y(board, shape, x)
         if y < 0:
             break
@@ -194,7 +242,7 @@ def main():
                     break
             if not running:
                 break
-            draw_board(screen, board, font, score)
+            draw_board(screen, board, font, score, next_piece, hold_piece)
             for px, py in shape:
                 rect = pygame.Rect((x + px) * CELL_SIZE,
                                    (step + py) * CELL_SIZE,
@@ -210,11 +258,25 @@ def main():
         place_piece(board, shape, x, y, piece)
         lines = clear_lines(board)
         score += lines
-        draw_board(screen, board, font, score)
+
+        # update piece order based on the chosen action
+        if action == 'hold_current':
+            hold_piece = current_piece
+            current_piece = next_piece
+            next_piece = random.choice(list(TETROMINOES.keys()))
+        elif action == 'use_hold':
+            hold_piece = current_piece
+            current_piece = next_piece
+            next_piece = random.choice(list(TETROMINOES.keys()))
+        else:  # use_current
+            current_piece = next_piece
+            next_piece = random.choice(list(TETROMINOES.keys()))
+
+        draw_board(screen, board, font, score, next_piece, hold_piece)
         pygame.display.flip()
         pygame.time.wait(MOVE_DELAY)
 
-    draw_board(screen, board, font, score)
+    draw_board(screen, board, font, score, next_piece, hold_piece)
     pygame.display.flip()
     pygame.time.wait(2000)
     pygame.quit()
