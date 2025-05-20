@@ -5,7 +5,10 @@ import sys
 BOARD_WIDTH = 10
 BOARD_HEIGHT = 20
 CELL_SIZE = 30
-FPS = 60
+# Delay after a piece settles (milliseconds)
+MOVE_DELAY = 200
+# Delay between each row of the falling piece (milliseconds)
+FALL_STEP_DELAY = 50
 
 # Tetromino definitions with their rotation states
 TETROMINOES = {
@@ -166,7 +169,6 @@ def main():
     screen = pygame.display.set_mode((width, height))
     pygame.display.set_caption("Self-Playing Tetris")
     font = pygame.font.SysFont(None, 24)
-    clock = pygame.time.Clock()
 
     board = empty_board()
     score = 0
@@ -184,12 +186,33 @@ def main():
         y = drop_y(board, shape, x)
         if y < 0:
             break
+
+        for step in range(y + 1):
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                    break
+            if not running:
+                break
+            draw_board(screen, board, font, score)
+            for px, py in shape:
+                rect = pygame.Rect((x + px) * CELL_SIZE,
+                                   (step + py) * CELL_SIZE,
+                                   CELL_SIZE, CELL_SIZE)
+                if step + py >= 0:
+                    pygame.draw.rect(screen, COLORS[piece], rect)
+            pygame.display.flip()
+            pygame.time.wait(FALL_STEP_DELAY)
+
+        if not running:
+            break
+
         place_piece(board, shape, x, y, piece)
         lines = clear_lines(board)
         score += lines
         draw_board(screen, board, font, score)
         pygame.display.flip()
-        clock.tick(10)
+        pygame.time.wait(MOVE_DELAY)
 
     draw_board(screen, board, font, score)
     pygame.display.flip()
