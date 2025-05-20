@@ -11,6 +11,8 @@ SIDE_PANEL_WIDTH = 6 * CELL_SIZE
 MOVE_DELAY = 200
 # Delay between each row of the falling piece (milliseconds)
 FALL_STEP_DELAY = 50
+# Delay between each frame of a rotation (milliseconds)
+ROTATE_STEP_DELAY = 50
 
 # Tetromino definitions with their rotation states
 TETROMINOES = {
@@ -230,6 +232,31 @@ def main():
                 action = 'use_current'
                 shape, x = shape_cur, x_cur
                 piece = current_piece
+
+        # Animate rotation to the chosen orientation
+        target_rot = TETROMINOES[piece].index(shape)
+        cur_rot = 0
+        while running and cur_rot != target_rot:
+            cur_rot = (cur_rot + 1) % len(TETROMINOES[piece])
+            temp_shape = TETROMINOES[piece][cur_rot]
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                    break
+            if not running:
+                break
+            draw_board(screen, board, font, score, next_piece, hold_piece)
+            for px, py in temp_shape:
+                rect = pygame.Rect((x + px) * CELL_SIZE,
+                                   py * CELL_SIZE,
+                                   CELL_SIZE, CELL_SIZE)
+                if py >= 0 and 0 <= x + px < BOARD_WIDTH:
+                    pygame.draw.rect(screen, COLORS[piece], rect)
+            pygame.display.flip()
+            pygame.time.wait(ROTATE_STEP_DELAY)
+
+        if not running:
+            break
 
         y = drop_y(board, shape, x)
         if y < 0:
