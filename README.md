@@ -1,24 +1,13 @@
 # Self-Playing Tetris
 
-This repository contains a simple console-based Tetris implementation in Python.
-The game does not require any external dependencies beyond the Python standard library.
+This repository contains a simple Tetris AI implemented with `pygame`.
 
 Run the game with:
-
-```
-python3 self_playing_tetris.py
-```
-
-The game will automatically choose moves based on a heuristic algorithm and display the board in the terminal until it reaches a game-over state.
-
-## Pygame Version
-
-If you have `pygame` installed, you can also watch the autoplayer run in a window
-with coloured blocks. Run it with:
 
 ```
 python3 self_playing_tetris_pygame.py
 ```
 
-This version uses the same heuristic logic but renders the board using `pygame`
-and assigns a different colour to each tetromino.
+The AI automatically chooses moves and displays them in a window. Each
+tetromino falls row by row with a short pause after it lands so you can watch
+the strategy unfold.
