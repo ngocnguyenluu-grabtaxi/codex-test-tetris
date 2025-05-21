@@ -48,7 +48,8 @@ class TetrisEnv:
         flat = []
         for row in self.board:
             for cell in row:
-                flat.append(0 if cell is None else (list(TETROMINOES.keys()).index(cell)+1))
+                val = 0.0 if cell is None else (list(TETROMINOES.keys()).index(cell) + 1) / 7.0
+                flat.append(val)
         # normalize extras
         extras = [list(TETROMINOES.keys()).index(self.current_piece)/7.0,
                   self.rotation/4.0,

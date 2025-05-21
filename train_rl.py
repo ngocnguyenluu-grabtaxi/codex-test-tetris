@@ -41,6 +41,8 @@ def main():
     parser.add_argument('--checkpoint_dir', default='checkpoints')
     parser.add_argument('--resume', default=None)
     parser.add_argument('--num_envs', type=int, default=8, choices=range(1,9))
+    parser.add_argument('--headless', action='store_true',
+                        help='disable rendering for faster training')
     args = parser.parse_args()
 
     os.makedirs(args.checkpoint_dir, exist_ok=True)
@@ -60,9 +62,13 @@ def main():
     env_h = BOARD_HEIGHT * CELL_SIZE
     scaled_w = int(env_w * scale)
     scaled_h = int(env_h * scale)
-    screen = pygame.display.set_mode((scaled_w * cols, scaled_h * rows + 30))
     clock = pygame.time.Clock()
-    font = pygame.font.SysFont(None, 18)
+    if not args.headless:
+        screen = pygame.display.set_mode((scaled_w * cols, scaled_h * rows + 30))
+        font = pygame.font.SysFont(None, 18)
+    else:
+        screen = None
+        font = None
 
     writer = SummaryWriter()
 
@@ -73,9 +79,10 @@ def main():
     running_loss = 0.0
     loss_count = 0
     for episode in range(args.episodes):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                return
+        if not args.headless:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    return
         for idx, env in enumerate(envs):
             state = env._get_obs()
             action = agent.act(state, epsilon=max(0.05, 1 - episode/500))
@@ -100,8 +107,10 @@ def main():
                     print(f"Step {agent.steps_done}: avg loss {avg:.4f}")
                     running_loss = 0.0
                     loss_count = 0
-        draw_envs(screen, envs, font, games_played=games_played,
-                  max_score=max_score, max_game=max_game, cols=cols, scale=scale)
+        if not args.headless:
+            draw_envs(screen, envs, font, games_played=games_played,
+                      max_score=max_score, max_game=max_game,
+                      cols=cols, scale=scale)
         if episode % 100 == 0 and episode > 0:
             ckpt_path = os.path.join(args.checkpoint_dir, f'ckpt_{episode}.pt')
             agent.save(ckpt_path)
@@ -113,10 +122,12 @@ def main():
             while len(ckpts) > 5:
                 oldest = ckpts.pop(0)
                 os.remove(os.path.join(args.checkpoint_dir, oldest))
-        clock.tick(60)
+        if not args.headless:
+            clock.tick(60)
 
     agent.save(os.path.join(args.checkpoint_dir, 'final.pt'))
-    pygame.quit()
+    if not args.headless:
+        pygame.quit()
 
 if __name__ == '__main__':
     main()
