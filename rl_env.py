@@ -102,11 +102,12 @@ class TetrisEnv:
                 place_piece(self.board, shape, self.piece_x, self.piece_y, self.current_piece)
                 lines = clear_lines(self.board)
                 self.score += lines
-                # reward shaping - scaled values for more stable learning
-                reward += lines * 5  # encourage clearing lines
+                # reward shaping encourages line clears and penalises
+                # messy boards without overwhelming the value targets
+                reward += lines * 20
                 heights = column_heights(self.board)
-                reward -= 0.0005 * sum(heights)
-                reward -= 0.02 * count_holes(self.board)
+                reward -= 0.02 * sum(heights)
+                reward -= 0.5 * count_holes(self.board)
                 self.current_piece = self.next_piece
                 self.next_piece = random.choice(list(TETROMINOES.keys()))
                 self.piece_x = BOARD_WIDTH // 2 - 2
