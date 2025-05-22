@@ -15,6 +15,7 @@ class DQN(nn.Module):
         self.board_w = board_w
         self.extras_dim = input_dim - board_dim
 
+        # smaller network for more stable gradients
         self.conv = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=3, padding=1),
             nn.ReLU(),
@@ -28,6 +29,13 @@ class DQN(nn.Module):
             nn.ReLU(),
             nn.Linear(128, n_actions)
         )
+
+        # use Xavier init to keep initial variance modest
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0.0)
 
     def forward(self, x):
         board = x[:, : self.board_h * self.board_w]
@@ -57,7 +65,7 @@ class ReplayBuffer:
         return len(self.buffer)
 
 class Agent:
-    def __init__(self, state_dim, device='cpu', lr=5e-4, gamma=0.99):
+    def __init__(self, state_dim, device='cpu', lr=1e-4, gamma=0.99):
         self.device = device
         self.gamma = gamma
         self.policy_net = DQN(state_dim, board_h=BOARD_HEIGHT, board_w=BOARD_WIDTH).to(device)
